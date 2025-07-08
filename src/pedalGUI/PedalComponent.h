@@ -30,7 +30,10 @@ public:
 
     const juce::String& getName() const { return pedalName; }
     bool isEnabled() const { return isActive; }
-    void setEnabled(bool enabled) { isActive = enabled; }
+    virtual void setEnabled(bool enabled) { isActive = enabled; updateToggleButton(); }
+    
+    // Virtual method for pedal subclasses to update their toggle button
+    virtual void updateToggleButton() {}
     
     // Virtual methods for saving/loading knob states
     virtual juce::var getKnobStates() const { return juce::var(); }

@@ -123,3 +123,9 @@ void ChorusComponent::setKnobStates(const juce::var& states)
         }
     }
 }
+
+void ChorusComponent::updateToggleButton()
+{
+    pedalButton.setToggleState(isEnabled(), juce::dontSendNotification);
+    pedalButton.repaint();
+}

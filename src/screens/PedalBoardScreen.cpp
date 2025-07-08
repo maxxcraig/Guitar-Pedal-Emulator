@@ -50,6 +50,25 @@ PedalBoardScreen::PedalBoardScreen(std::function<void()> goHome)
     saveButton.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
     saveButton.setButtonText("Save Board");
     saveButton.onClick = [this]() {
+        // Check if we can save more boards (8 board limit)
+        juce::File dir = juce::File::getCurrentWorkingDirectory().getChildFile("Boards");
+        
+        if (dir.exists()) {
+            auto files = dir.findChildFiles(juce::File::findFiles, false, "*.json");
+            if (files.size() >= 8) {
+                // Show limit reached message
+                auto* limitAlert = new juce::AlertWindow("Board Limit Reached", 
+                    "Board limit reached, delete an old board to proceed.", 
+                    juce::AlertWindow::WarningIcon);
+                limitAlert->addButton("OK", 1);
+                limitAlert->enterModalState(true, juce::ModalCallbackFunction::create(
+                    [limitAlert](int) {
+                        std::unique_ptr<juce::AlertWindow> cleanup(limitAlert);
+                    }), false);
+                return;
+            }
+        }
+        
         auto* alert = new juce::AlertWindow("Save Board", "Enter a name for your board:", juce::AlertWindow::NoIcon);
         alert->addTextEditor("boardName", "MyBoard", "Board Name:");
         alert->addButton("Save", 1);

@@ -16,6 +16,9 @@ public:
     // Save/load knob states
     juce::var getKnobStates() const override;
     void setKnobStates(const juce::var& states) override;
+    
+    // Update toggle button to match enabled state
+    void updateToggleButton() override;
 
 private:
     juce::Slider levelKnob, driveKnob, toneKnob;

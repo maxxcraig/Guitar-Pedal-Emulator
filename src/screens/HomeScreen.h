@@ -76,9 +76,9 @@ public:
         topBar.removeFromRight(spacing);
         aboutButton.setBounds(topBar.removeFromRight(btnWidth));
 
-        // Intro and Create button area
+        // Intro and Create button area - moved down to center better
         int marginLeft = 80;
-        int marginTop = 150;
+        int marginTop = 220;  // Moved down from 150 to 220
         int contentWidth = 500;
 
         introLabel.setBounds(marginLeft, marginTop, contentWidth, 140);

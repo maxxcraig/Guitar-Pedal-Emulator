@@ -126,6 +126,12 @@ public:
             }
         }
     }
+    
+    void updateToggleButton() override
+    {
+        pedalButton.setToggleState(isEnabled(), juce::dontSendNotification);
+        pedalButton.repaint();
+    }
 
 private:
     juce::Slider timeKnob, feedbackKnob, mixKnob;

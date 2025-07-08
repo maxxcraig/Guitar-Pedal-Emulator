@@ -123,6 +123,12 @@ public:
             }
         }
     }
+    
+    void updateToggleButton() override
+    {
+        pedalButton.setToggleState(isEnabled(), juce::dontSendNotification);
+        pedalButton.repaint();
+    }
 
 private:
     juce::Slider volumeKnob, gainKnob, toneKnob;

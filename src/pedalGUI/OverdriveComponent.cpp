@@ -124,3 +124,9 @@ void OverdriveComponent::setKnobStates(const juce::var& states)
             overdrivePtr->setGain(driveKnob.getValue());
     }
 }
+
+void OverdriveComponent::updateToggleButton()
+{
+    pedalButton.setToggleState(isEnabled(), juce::dontSendNotification);
+    pedalButton.repaint();
+}
