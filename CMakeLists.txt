@@ -28,6 +28,7 @@ target_link_libraries(GuitarPedalApp
         juce::juce_graphics
         juce::juce_gui_basics
         juce::juce_gui_extra
+        juce::juce_dsp
 )
 
 target_sources(GuitarPedalApp

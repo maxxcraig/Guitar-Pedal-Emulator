@@ -6,65 +6,69 @@
 
 class Chorus : public BaseEffect {
 public:
-    void setSampleRate(double rate) override {
-        sampleRate = rate;
-        int maxDelaySamples = static_cast<int>(sampleRate * maxDelayTime);
-        delayBuffer.resize(maxDelaySamples, 0.0f);
+    Chorus() {
+        setSampleRate(44100.0);
     }
 
-    float processSample(float inputSample) override {
-        // Ensure delay buffer is initialized
-        if (delayBuffer.empty()) return inputSample;
-        
-        // Write current input into the buffer
-        delayBuffer[writeIndex] = inputSample;
+    float processSample(float input) override {
+        if (delayBuffer.empty()) return input;
 
-        // Calculate modulated delay time in samples with safety bounds
-        float lfo = std::sin(phase);
-        float modulatedDelay = baseDelay + depth * lfo; // delay in seconds
-        modulatedDelay = std::clamp(modulatedDelay, 0.001f, maxDelayTime - 0.001f);
-        int delaySamples = static_cast<int>(modulatedDelay * sampleRate);
+        // Clean up input to prevent fuzz
+        input = std::tanh(input * 0.95f);
+
+        float lfoValue = std::sin(lfoPhase) * depth;
+        lfoPhase += rate * 2.0f * M_PI / sampleRate;
+        if (lfoPhase > 2.0f * M_PI) lfoPhase -= 2.0f * M_PI;
+
+        float delayTime = centreDelay + lfoValue;
+        int delaySamples = static_cast<int>(delayTime * sampleRate / 1000.0f);
         delaySamples = std::clamp(delaySamples, 1, static_cast<int>(delayBuffer.size()) - 1);
 
         int readIndex = writeIndex - delaySamples;
-        if (readIndex < 0)
-            readIndex += delayBuffer.size();
+        if (readIndex < 0) readIndex += delayBuffer.size();
 
         float delayedSample = delayBuffer[readIndex];
         
-        // Clean up the delayed sample
-        if (std::abs(delayedSample) > 0.9f) {
-            delayedSample = std::tanh(delayedSample) * 0.9f;
-        }
-
-        // Advance write head and LFO
+        // Reduce feedback to eliminate fuzz and apply soft clipping
+        float feedbackSample = input * 0.8f + delayedSample * (feedback * 0.5f);
+        feedbackSample = std::tanh(feedbackSample * 0.9f);
+        delayBuffer[writeIndex] = feedbackSample;
+        
         writeIndex = (writeIndex + 1) % delayBuffer.size();
-        phase += rate * 2.0f * juce::MathConstants<float>::pi / sampleRate;
-        if (phase > juce::MathConstants<float>::twoPi)
-            phase -= juce::MathConstants<float>::twoPi;
 
-        // Mix dry and wet signal with cleaner level control
-        return (1.0f - mix) * inputSample + mix * delayedSample * 0.8f;
+        // Clean mix with slight attenuation to prevent artifacts
+        float wetSignal = delayedSample * 0.85f;
+        return std::clamp((1.0f - mix) * input + mix * wetSignal, -1.0f, 1.0f);
     }
+
+    void setSampleRate(double rate) override {
+        sampleRate = rate;
+        int bufferSize = static_cast<int>(rate * maxDelayMs / 1000.0f) + 1;
+        delayBuffer.assign(bufferSize, 0.0f);
+        writeIndex = 0;
+        lfoPhase = 0.0f;
+    }
+
+    void setRate(float Hz) { rate = std::clamp(Hz, 0.1f, 5.0f); }
+    void setDepth(float d) { depth = std::clamp(d, 0.0f, 10.0f); }
+    void setCentreDelay(float ms) { centreDelay = std::clamp(ms, 5.0f, 30.0f); }
+    void setFeedback(float fb) { feedback = std::clamp(fb, 0.0f, 0.3f); }
+    void setMix(float m) { mix = std::clamp(m, 0.0f, 1.0f); }
 
     void setParameter(float value) override {
-        setDepth(value / 30.0f + 0.001f); // maps 0-10 to 0.001-0.334, more audible
+        setDepth(value * 0.5f);
     }
 
-    void setRate(float newRate)   { rate = std::clamp(newRate, 0.2f, 1.5f); }
-    void setDepth(float newDepth) { depth = std::clamp(newDepth, 0.001f, 0.008f); }
-    void setMix(float newMix)     { mix = std::clamp(newMix, 0.0f, 0.8f); }
-
 private:
+    double sampleRate = 44100.0;
+    float maxDelayMs = 50.0f;
     std::vector<float> delayBuffer;
     int writeIndex = 0;
-
-    double sampleRate = 44100.0;
-    float rate = 0.6f;            // Hz
-    float depth = 0.003f;         // seconds (max ± offset to baseDelay)
-    float baseDelay = 0.006f;     // seconds
-    float mix = 0.5f;
-
-    float phase = 0.0f;
-    const float maxDelayTime = 0.025f; // max 25ms buffer
+    
+    float rate = 0.8f;
+    float depth = 5.0f;
+    float centreDelay = 12.0f;
+    float feedback = 0.0f;
+    float mix = 0.25f;
+    float lfoPhase = 0.0f;
 };

@@ -7,13 +7,22 @@ ChorusComponent::ChorusComponent()
     : PedalComponent("Chorus", std::make_unique<Chorus>(), "Chorus.png")
 {
     chorusPtr = dynamic_cast<Chorus*>(effectProcessor.get());
+    if (chorusPtr)
+    {
+        chorusPtr->setRate(0.8f);
+        chorusPtr->setDepth(0.05f);
+        chorusPtr->setCentreDelay(12.0f);  // <== this is critical!
+        chorusPtr->setFeedback(0.0f);
+        chorusPtr->setMix(0.25f);
+    }
+
 
     // === RATE ===
     rateKnob.setLookAndFeel(&customKnobLook);
     rateKnob.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
     rateKnob.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
     rateKnob.setRange(0.1, 5.0, 0.01);
-    rateKnob.setValue(2.55);
+    rateKnob.setValue(2.55); // Middle of 0.1 to 5.0 range
     rateKnob.setRotaryParameters(juce::MathConstants<float>::pi * 0.7f,
                                   juce::MathConstants<float>::pi * 2.3f,
                                   true);
@@ -29,7 +38,7 @@ ChorusComponent::ChorusComponent()
     depthKnob.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
     depthKnob.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
     depthKnob.setRange(0.0, 1.0, 0.01);
-    depthKnob.setValue(0.5);
+    depthKnob.setValue(0.5); // Middle of 0.0 to 1.0 range
     depthKnob.setRotaryParameters(juce::MathConstants<float>::pi * 0.7f,
                                    juce::MathConstants<float>::pi * 2.3f,
                                    true);
@@ -45,7 +54,7 @@ ChorusComponent::ChorusComponent()
     mixKnob.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
     mixKnob.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
     mixKnob.setRange(0.0, 1.0, 0.01);
-    mixKnob.setValue(0.5);
+    mixKnob.setValue(0.5); // Middle of 0.0 to 1.0 range
     mixKnob.setRotaryParameters(juce::MathConstants<float>::pi * 0.7f,
                                  juce::MathConstants<float>::pi * 2.3f,
                                  true);

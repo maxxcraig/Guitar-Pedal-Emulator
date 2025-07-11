@@ -2,6 +2,7 @@
 
 #include "BaseEffects.h"
 #include <vector>
+#include <cmath>
 #include <algorithm>
 
 class CustomReverb : public BaseEffect {
@@ -16,39 +17,33 @@ public:
     void setTone(float value);
 
 private:
-    // Simple multi-tap delay reverb
+    void initializeDelayLines();
+    
     struct DelayLine {
         std::vector<float> buffer;
         int writeIndex = 0;
-        float delayTime = 0.0f;
-        float gain = 0.0f;
-        
-        void setDelay(float timeInSamples, float g) {
-            int size = static_cast<int>(timeInSamples);
-            if (size > 0 && size != buffer.size()) {
-                buffer.resize(size, 0.0f);
-                writeIndex = 0;
-            }
-            gain = g;
-        }
+        int delaySamples = 0;
+        float feedback = 0.0f;
         
         float process(float input) {
-            if (buffer.empty()) return 0.0f;
+            if (buffer.empty()) return input;
             
-            buffer[writeIndex] = input;
-            float output = buffer[writeIndex] * gain;
-            
+            float output = buffer[writeIndex];
+            buffer[writeIndex] = input + output * feedback;
             writeIndex = (writeIndex + 1) % buffer.size();
             return output;
         }
     };
     
-    static const int numDelayLines = 6;
-    DelayLine delayLines[numDelayLines];
+    DelayLine earlyReflections[6];
+    DelayLine lateReverb[4];
     
-    double sampleRate = 44100.0;
-    float mix = 0.6f;
-    float decay = 0.5f;
+    float mix = 0.5f;
+    float decay = 0.6f;
     float tone = 0.5f;
-    float lastOutput = 0.0f;
+    float diffusion = 0.7f;
+    double sampleRate = 44100.0;
+    
+    float lowpassState = 0.0f;
+    float allpassStates[4] = {0.0f};
 };

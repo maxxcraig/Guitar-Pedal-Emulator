@@ -5,67 +5,74 @@
 
 class Phaser : public BaseEffect {
 public:
-    float processSample(float sample) override {
-        // Update LFO with more pronounced sweep
-        float lfoValue = std::sin(phase) * depth;
-        phase += rate * 2.0f * juce::MathConstants<float>::pi / sampleRate;
-        if (phase > juce::MathConstants<float>::twoPi)
-            phase -= juce::MathConstants<float>::twoPi;
+    Phaser() {
+        setSampleRate(44100.0);
+    }
 
-        // Calculate all-pass filter coefficients with wider sweep range
-        float centerFreq = 400.0f + lfoValue * 2000.0f;
-        centerFreq = std::clamp(centerFreq, 100.0f, 3000.0f);
-        float omega = 2.0f * juce::MathConstants<float>::pi * centerFreq / sampleRate;
-        float alpha = (1.0f - std::tan(omega * 0.5f)) / (1.0f + std::tan(omega * 0.5f));
+    float processSample(float input) override {
+        // Simple LFO
+        float lfo = std::sin(lfoPhase);
+        lfoPhase += rate * 2.0f * M_PI / sampleRate;
+        if (lfoPhase > 2.0f * M_PI) lfoPhase -= 2.0f * M_PI;
+
+        // Modulated center frequency - reduced sweep range
+        float baseFreq = 800.0f;
+        float sweep = 300.0f * depth; // Reduced from 600 to 300
+        float modFreq = baseFreq + lfo * sweep;
         
-        // Apply 6-stage all-pass filtering for more pronounced effect
-        float output = sample;
-        for (int i = 0; i < 6; ++i) {
-            float delayed = delayLine[i] + output * alpha;
-            output = delayed - alpha * output;
-            delayLine[i] = delayed;
+        // Calculate w = 2πf / sampleRate
+        float w = 2.0f * M_PI * modFreq / sampleRate;
+        float alpha = (1.0f - std::tan(w * 0.5f)) / (1.0f + std::tan(w * 0.5f));
+        alpha = std::clamp(alpha, -0.95f, 0.95f);
+
+        // Apply feedback to input
+        float inputWithFeedback = input + feedbackSample * feedback;
+        
+        // Process through 4 allpass stages
+        float output = inputWithFeedback;
+        for (int i = 0; i < 4; ++i) {
+            float y = -alpha * output + prevInput[i] + alpha * prevOutput[i];
+            prevInput[i] = output;
+            prevOutput[i] = y;
+            output = y;
         }
         
-        // Apply feedback with proper limiting
-        output = output + feedback * lastOutput;
+        // Store feedback sample
+        feedbackSample = output;
         
-        // Prevent runaway feedback with soft limiting
-        if (std::abs(output) > 0.8f) {
-            output = std::tanh(output) * 0.8f;
-        }
-        lastOutput = output * 0.9f;
-        
-        // Mix with dry signal with safe levels
-        return (1.0f - mix) * sample + mix * output * 0.6f;
+        // Mix dry and wet
+        return input * (1.0f - mix) + output * mix;
     }
 
     void setParameter(float value) override {
-        setDepth(value * 0.1f + 0.5f); // Scale to good range
+        // Map 0-10 to depth range - more subtle
+        depth = (value / 10.0f) * 0.5f; // 0 to 0.5 for subtler effect
     }
 
-    void setDepth(float value) { 
-        depth = std::clamp(value, 0.3f, 1.0f); 
-    }
-    
-    void setRate(float value) { 
-        rate = std::clamp(value, 0.2f, 3.0f); 
-    }
-    
-    void setMix(float value) { 
-        mix = std::clamp(value, 0.0f, 1.0f); 
-    }
+    void setDepth(float value) { depth = std::clamp(value, 0.0f, 1.0f); }
+    void setRate(float value)  { rate = std::clamp(value, 0.1f, 3.0f); }
+    void setMix(float value)   { mix = std::clamp(value, 0.0f, 1.0f); }
+    void setFeedback(float value) { feedback = std::clamp(value, 0.0f, 0.7f); }
 
     void setSampleRate(double rateIn) override {
         sampleRate = rateIn;
+        lfoPhase = 0.0f;
+        feedbackSample = 0.0f;
+        for (int i = 0; i < 4; ++i) {
+            prevInput[i] = 0.0f;
+            prevOutput[i] = 0.0f;
+        }
     }
 
 private:
-    float depth = 0.7f;
-    float rate = 0.4f;
-    float mix = 0.5f;
-    float feedback = 0.25f;  // Reduced to prevent clipping
-    float phase = 0.0f;
-    float delayLine[6] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
-    float lastOutput = 0.0f;
     double sampleRate = 44100.0;
+    float lfoPhase = 0.0f;
+    float prevInput[4] = {0.0f};
+    float prevOutput[4] = {0.0f};
+    float feedbackSample = 0.0f;
+    
+    float rate = 0.5f;      // LFO rate in Hz
+    float depth = 0.4f;     // Reduced sweep depth
+    float mix = 0.3f;       // Reduced wet/dry mix
+    float feedback = 0.15f; // Reduced feedback amount
 };
