@@ -25,9 +25,8 @@ public:
     void loadBoardData(const juce::var& boardVar);
     PedalComponent* getPedalByName(const juce::String& name);
 
-
-
 private:
+    float softLimit(float sample);
     double currentSampleRate = 44100.0;
     juce::Image backgroundImage;
 
@@ -46,7 +45,7 @@ private:
     juce::Label inputGainLabel { "Input Gain", "Input Gain" };
     
     bool masterBypass = false;
-    float inputGain = 0.5f;
+    float inputGain = 0.3f;
     
     std::function<void()> onBackToHome;
 };

@@ -28,7 +28,7 @@ public:
         "Key technical achievements include seamless real-time audio streaming, drag-and-drop pedal arrangement, comprehensive save/load functionality with JSON persistence, and cloud-based user authentication through Supabase integration. The intuitive interface allows musicians to create, experiment with, and save custom pedal board configurations.\n\n"
     
         
-        "Feel free to reach out to me (max8alton@gmail.com) with any questions, suggestions, or comments. This entire project is on my public GitHub repo https://github.com/maxxcraig/Guitar-Pedal-App.",
+        "Feel free to reach out to me (max8alton@gmail.com) with any questions, suggestions, or comments. This entire project is on my public GitHub repo https://github.com/maxxcraig/Guitar-Pedal-Emulator.",
 
             juce::dontSendNotification);
         aboutText.setJustificationType(juce::Justification::topLeft);

@@ -129,8 +129,8 @@ PedalBoardScreen::PedalBoardScreen(std::function<void()> goHome)
     addAndMakeVisible(inputGainSlider);
     addAndMakeVisible(inputGainLabel);
     inputGainSlider.setSliderStyle(juce::Slider::LinearHorizontal);
-    inputGainSlider.setRange(0.0, 2.0, 0.01);
-    inputGainSlider.setValue(0.5);
+    inputGainSlider.setRange(0.0, 1.0, 0.01);
+    inputGainSlider.setValue(0.3);
     inputGainSlider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 50, 20);
     inputGainSlider.onValueChange = [this]() {
         inputGain = inputGainSlider.getValue();
@@ -260,30 +260,46 @@ void PedalBoardScreen::getNextAudioBlock(const juce::AudioSourceChannelInfo& inf
         if (channel < totalInputChannels) {
             const float* inBuffer = info.buffer->getReadPointer(channel, info.startSample);
             for (int i = 0; i < info.numSamples; ++i) {
-                // Apply input gain
+                // Apply input gain with better scaling
                 float sample = inBuffer[i] * inputGain;
                 
                 // Process through pedals only if not bypassed
                 if (!masterBypass) {
-                    auto process = [&](auto& pedal) {
-                        if (pedal && pedal->isEnabled())
+                    auto processModulation = [&](auto& pedal) {
+                        if (pedal && pedal->isEnabled()) {
                             sample = pedal->processSample(sample);
+                            sample *= 0.9f; // Less attenuation for modulation
+                        }
                     };
-                    process(overdrivePedal);
-                    process(reverbPedal);
-                    process(distortionPedal);
-                    process(bluesDriverPedal);
-                    process(delayPedal);
-                    process(tremoloPedal);
-                    process(chorusPedal);
-                    process(phaserPedal);
+                    auto processDistortion = [&](auto& pedal) {
+                        if (pedal && pedal->isEnabled()) {
+                            sample = pedal->processSample(sample);
+                            sample *= 0.8f; // More attenuation for distortion
+                        }
+                    };
+                    auto processTimeBase = [&](auto& pedal) {
+                        if (pedal && pedal->isEnabled()) {
+                            sample = pedal->processSample(sample);
+                            sample *= 0.85f; // Medium attenuation for time-based
+                        }
+                    };
+                    
+                    // Proper signal chain: Modulation → Distortion → Time-based
+                    processModulation(chorusPedal);
+                    processModulation(phaserPedal);
+                    processDistortion(overdrivePedal);
+                    processDistortion(distortionPedal);
+                    processDistortion(bluesDriverPedal);
+                    processModulation(tremoloPedal);
+                    processTimeBase(delayPedal);
+                    processTimeBase(reverbPedal);
                 }
                 
-                // Apply soft clipping to prevent harsh distortion
-                if (sample > 1.0f) sample = 1.0f;
-                else if (sample < -1.0f) sample = -1.0f;
+                // Apply soft limiting instead of hard clipping
+                sample = softLimit(sample);
                 
-                outBuffer[i] = sample;
+                // Final output scaling
+                outBuffer[i] = sample * 0.7f;
             }
         } else {
             juce::FloatVectorOperations::clear(outBuffer, info.numSamples);
@@ -292,6 +308,14 @@ void PedalBoardScreen::getNextAudioBlock(const juce::AudioSourceChannelInfo& inf
 }
 
 void PedalBoardScreen::releaseResources() {}
+
+float PedalBoardScreen::softLimit(float sample) {
+    // Soft limiting using tanh for musical distortion
+    if (std::abs(sample) > 0.7f) {
+        return std::tanh(sample * 0.7f) / 0.7f;
+    }
+    return sample;
+}
 
 void PedalBoardScreen::paint(juce::Graphics& g) {
     if (backgroundImage.isValid())
